@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan } from 'typeorm';
+import { Repository, MoreThan, DataSource } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { Workspace } from '../../database/entities/workspace.entity';
 import { WorkspaceMember } from '../../database/entities/workspace-member.entity';
@@ -23,6 +23,7 @@ export class MembersService {
     private readonly userRepository: Repository<User>,
     private readonly emailService: EmailService,
     private readonly envConfig: EnvConfig,
+    private readonly dataSource: DataSource,
   ) {}
 
   async listMembers(workspaceId: string): Promise<WorkspaceMember[]> {
@@ -56,20 +57,20 @@ export class MembersService {
       if (isMember) {
         throw new ConflictException('User is already a member of this workspace');
       }
-    }
+    }   
 
-    // 3. Remove any existing pending invitation for this email in this workspace
-    await this.invitationRepository.delete({
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 72); // 72 hours from now
+    const savedInvite = await this.dataSource.transaction(async (manager) =>{
+
+  
+    await manager.delete(Invitation, {
       workspaceId,
       email: emailLower,
       status: InvitationStatus.PENDING,
     });
 
-    // 4. Create new invitation
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 72); // 72 hours from now
-
-    const invitation = this.invitationRepository.create({
+    const invitation = manager.create(Invitation,{
       email: emailLower,
       role,
       token: randomUUID(),
@@ -79,7 +80,9 @@ export class MembersService {
       status: InvitationStatus.PENDING,
     });
 
-    const savedInvite = await this.invitationRepository.save(invitation);
+    return manager.save(invitation);
+  },
+)
 
     // Send email invitation
     const frontendUrl = this.envConfig.appConfig.primaryFrontendUrl;
@@ -108,51 +111,89 @@ export class MembersService {
   }
 
   async acceptInvitation(token: string, userId: string): Promise<Workspace> {
-    const invite = await this.invitationRepository.findOne({
-      where: { token, status: InvitationStatus.PENDING },
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
     });
-    
-    if (!invite) {
-      throw new NotFoundException('Invalid or expired invitation token');
-    }
 
-    if (invite.expiresAt < new Date()) {
-      invite.status = InvitationStatus.REVOKED;
-      await this.invitationRepository.save(invite);
-      throw new BadRequestException('Invitation has expired');
-    }
-
-    const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    if (user.email.toLowerCase() !== invite.email.toLowerCase()) {
-      throw new ForbiddenException('This invitation is for a different email address');
-    }
 
-    // Add user as member
-    const existingMember = await this.memberRepository.findOne({
-      where: { userId, workspaceId: invite.workspaceId },
-    });
-
-    if (!existingMember) {
-      const newMember = this.memberRepository.create({
-        userId,
-        workspaceId: invite.workspaceId,
-        role: invite.role,
+    return this.dataSource.transaction(async (manager) => {
+      const invite = await manager.findOne(Invitation, {
+        where: {
+          token,
+          status: InvitationStatus.PENDING,
+        },
+        lock: {
+          mode: 'pessimistic_write',
+        },
       });
-      await this.memberRepository.save(newMember);
-    }
 
-    // Mark accepted
-    invite.status = InvitationStatus.ACCEPTED;
-    await this.invitationRepository.save(invite);
+      if (!invite) {
+        throw new NotFoundException(
+          'Invalid or expired invitation token',
+        );
+      }
 
-    const workspace = await this.workspaceRepository.findOne({ where: { id: invite.workspaceId } });
-    if (!workspace) {
-      throw new NotFoundException('Workspace not found');
-    }
-    return workspace;
+      if (invite.expiresAt < new Date()) {
+        invite.status = InvitationStatus.REVOKED;
+        await manager.save(invite);
+
+        throw new BadRequestException(
+          'Invitation has expired',
+        );
+      }
+
+      if (
+        user.email.toLowerCase() !==
+        invite.email.toLowerCase()
+      ) {
+        throw new ForbiddenException(
+          'This invitation is for a different email address',
+        );
+      }
+
+      const existingMember = await manager.findOne(
+        WorkspaceMember,
+        {
+          where: {
+            userId,
+            workspaceId: invite.workspaceId,
+          },
+        },
+      );
+
+      if (!existingMember) {
+        const newMember = manager.create(
+          WorkspaceMember,
+          {
+            userId,
+            workspaceId: invite.workspaceId,
+            role: invite.role,
+          },
+        );
+
+        await manager.save(newMember);
+      }
+
+      invite.status = InvitationStatus.ACCEPTED;
+      await manager.save(invite);
+
+      const workspace = await manager.findOne(Workspace, {
+        where: {
+          id: invite.workspaceId,
+        },
+      });
+
+      if (!workspace) {
+        throw new NotFoundException(
+          'Workspace not found',
+        );
+      }
+
+      return workspace;
+    });
   }
 
   async changeMemberRole(

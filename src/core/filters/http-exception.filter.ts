@@ -1,12 +1,20 @@
-import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
+import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger, } from '@nestjs/common';
 import { Response } from 'express';
 import { AppResponse } from '../dto/api-response.dto';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
+  private readonly logger = new Logger(AllExceptionsFilter.name)
   catch(exception: any, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+
+    if (!(exception instanceof HttpException)) {
+      this.logger.error(
+        exception?.message || 'Unhandled exception',
+        exception?.stack,
+      )
+    }
 
     const status = exception instanceof HttpException 
       ? exception.getStatus() 

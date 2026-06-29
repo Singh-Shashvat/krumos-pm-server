@@ -1,10 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { User } from './user.entity';
 import { Workspace } from './workspace.entity';
 import { Task } from './task.entity';
 import { Invitation } from './invitation.entity';
 
 @Entity('notifications')
+@Index('IDX_NOTIFICATION_USER_ID', ['userId'])
+@Index('IDX_NOTIFICATION_ISREAD',['isRead'])
 export class Notification {
   @PrimaryGeneratedColumn('uuid')
   id: string;

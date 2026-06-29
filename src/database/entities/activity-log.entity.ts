@@ -1,8 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { Task } from './task.entity';
 import { User } from './user.entity';
 
 @Entity('activity_logs')
+@Index('IDX_ACTIVITYLOG_TASKID',['taskId'])
 export class ActivityLog {
   @PrimaryGeneratedColumn('uuid')
   id: string;

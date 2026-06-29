@@ -114,7 +114,7 @@ export class ProjectsService {
     // Soft-delete all tasks of the project
     await this.dataSource.transaction(async(manager)=>{
       await manager.softDelete(Task , {projectId,});
-      await manager.softDelete(Project , project);
+      await manager.softDelete(Project , projectId);
     })
   }
 }

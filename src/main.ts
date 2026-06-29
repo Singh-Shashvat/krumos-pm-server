@@ -4,10 +4,16 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { TransformInterceptor } from './core/interceptors/transform.interceptor';
 import { AllExceptionsFilter } from './core/filters/http-exception.filter';
+import { EnvConfig } from './core/config/env.config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors();
+  const envConfig = app.get(EnvConfig);
+
+  app.enableCors({
+    origin: envConfig.appConfig.frontendUrl,
+    credentials: true,
+  });
 
   // Enforce global request validation DTOs
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));

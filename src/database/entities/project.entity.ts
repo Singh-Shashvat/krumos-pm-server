@@ -1,12 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, ManyToOne, OneToMany, JoinColumn, Index } from 'typeorm';
 import { Workspace } from './workspace.entity';
 import { User } from './user.entity';
 import { Task } from './task.entity';
 import { ProjectStatus } from '../../types/enum';
 
-
-
 @Entity('projects')
+@Index('IDX_PROJECT_WORKSPACE_ID', ['workspaceId'])
 export class Project {
   @PrimaryGeneratedColumn('uuid')
   id: string;

@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, ManyToOne, OneToMany, JoinColumn, Index } from 'typeorm';
 import { Project } from './project.entity';
 import { User } from './user.entity';
 import { Comment } from './comment.entity';
@@ -6,6 +6,9 @@ import { ActivityLog } from './activity-log.entity';
 import { TaskStatus, TaskPriority } from '@/types/enum';
 
 @Entity('tasks')
+@Index('IDX_TASK_PROJECT_ID', ['projectId'])
+@Index('IDX_TASK_ASSIGNEE_ID', ['assigneeId'])
+@Index('IDX_TASK_REPORTER_ID', ['reporterId'])
 export class Task {
   @PrimaryGeneratedColumn('uuid')
   id: string;

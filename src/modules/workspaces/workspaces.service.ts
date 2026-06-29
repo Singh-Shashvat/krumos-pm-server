@@ -117,6 +117,10 @@ export class WorkspacesService {
       if(!workspace){
         throw new NotFoundException("workspace not found");
       }
+
+      if (workspace.name.toLowerCase() !== confirmName.trim().toLowerCase()) {
+        throw new ForbiddenException("Confirm name does not match workspace name");
+      }
       const projects = await manager.find(Project,{where:{workspaceId}});
       const projectIds = projects.map((p)=>p.id);
 

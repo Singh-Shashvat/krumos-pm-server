@@ -6,7 +6,7 @@ import { WorkspaceRole } from '@/types/enum';
 export { WorkspaceRole };
 
 @Entity('workspace_members')
-@Unique(['userId', 'workspaceId'])
+@Unique('UNQ_WORKSPACEMEMBER_WORKSPACEID_USERID', [ 'workspaceId', 'userId'])
 export class WorkspaceMember {
   @PrimaryGeneratedColumn('uuid')
   id: string;
