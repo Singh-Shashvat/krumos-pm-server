@@ -83,22 +83,6 @@ export class WorkspacesService {
       await manager.save(member);
       return savedWorkspace;
     })
-    // // Save Workspace
-    // const workspace = this.workspaceRepository.create({
-    //   name: name.trim(),
-    //   slug,
-    // });
-    // const savedWorkspace = await this.workspaceRepository.save(workspace);
-
-    // // Add User as ADMIN
-    // const member = this.memberRepository.create({
-    //   userId,
-    //   workspaceId: savedWorkspace.id,
-    //   role: WorkspaceRole.ADMIN,
-    // });
-    // await this.memberRepository.save(member);
-
-    // return savedWorkspace;
   }
 
   async updateWorkspace(workspaceId: string, name: string, logo?: string): Promise<Workspace> {
@@ -121,24 +105,7 @@ export class WorkspacesService {
       if (workspace.name.toLowerCase() !== confirmName.trim().toLowerCase()) {
         throw new ForbiddenException("Confirm name does not match workspace name");
       }
-      const projects = await manager.find(Project,{where:{workspaceId}});
-      const projectIds = projects.map((p)=>p.id);
-
-      if(projectIds.length > 0){
-        await manager.softDelete(Task,{projectId:In(projectIds)})
-      
-      await manager.softDelete(Project,{workspaceId});
-      }
-      await manager.softRemove(workspace);
+      await manager.delete(Workspace, {id: workspaceId});
     })
-    // Soft-delete all tasks of all projects within the workspace
-    // const projects = await this.projectRepository.find({ where: { workspaceId } });
-    // const projectIds = projects.map((p) => p.id);
-    // if (projectIds.length > 0) {
-    //   await this.taskRepository.softDelete({ projectId: In(projectIds) });
-    //   await this.projectRepository.softDelete({ workspaceId });
-    // }
-
-    // await this.workspaceRepository.softRemove(workspace);
   }
 }
